@@ -35,41 +35,6 @@ const (
 	passagePane
 )
 
-type Book struct {
-	title     string
-	fullTitle string
-	chapters  int
-}
-
-// implement the List.Item interface
-func (b Book) FilterValue() string {
-	return b.title
-}
-func (b Book) Title() string {
-	return b.title
-}
-
-func (b Book) Description() string {
-	return b.fullTitle
-}
-
-type Chapter struct {
-	number      int
-	description string
-}
-
-// implement the List.Item interface
-func (c Chapter) FilterValue() string {
-	return ""
-}
-func (c Chapter) Title() string {
-	return fmt.Sprintf("%d", c.number)
-}
-
-func (c Chapter) Description() string {
-	return c.description
-}
-
 /* MAIN MODEL */
 type Model struct {
 	loaded   bool
@@ -123,7 +88,8 @@ func (m *Model) initLists(width, height int) {
 		fmt.Println(err)
 	}
 	bookList := list.New(books, list.NewDefaultDelegate(), width, height)
-	chapterList := list.New([]list.Item{}, list.NewDefaultDelegate(), width, height)
+	// chapterList := list.New([]list.Item{}, list.NewDefaultDelegate(), width, height)
+	chapterList := list.New([]list.Item{}, chapterDelegate{}, width, height)
 	passageView := viewport.New(width, height)
 	m.lists = []list.Model{bookList, chapterList}
 
@@ -137,17 +103,16 @@ func (m *Model) initLists(width, height int) {
 	m.lists[chapterPane].FilterInput.Prompt = "Find Chapter: "
 	m.lists[chapterPane].SetStatusBarItemName("Chapter", "Chapters")
 	m.lists[chapterPane].SetItems([]list.Item{
-		Chapter{number: 1, description: ""},
-		Chapter{number: 2, description: ""},
-		Chapter{number: 3, description: ""},
-		Chapter{number: 4, description: ""},
-		Chapter{number: 5, description: ""},
-		Chapter{number: 6, description: ""},
-		Chapter{number: 7, description: ""},
-		Chapter{number: 8, description: ""},
-		Chapter{number: 9, description: ""},
-		Chapter{number: 10, description: ""},
-		Chapter{number: 11, description: ""},
+		Chapter("1"),
+		Chapter("2"),
+		Chapter("3"),
+		Chapter("4"),
+		Chapter("5"),
+		Chapter("6"),
+		Chapter("7"),
+		Chapter("8"),
+		Chapter("9"),
+		Chapter("10"),
 	})
 
 	// Init Passage
@@ -187,7 +152,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() string {
 	if m.quitting {
-		return ""
+		return "Jesus Loves You!"
 	}
 	if m.loaded {
 		return lipgloss.JoinHorizontal(
