@@ -12,27 +12,29 @@ import (
 	"github.com/muesli/reflow/wrap"
 )
 
-// ! testing
+// !  testing
 var p = "1 The book of the generation of Jesus Christ, the son of David, the son of Abraham. 2 Abraham begat Isaac; and Isaac begat Jacob; and Jacob begat Judas and his brethren; 3 And Judas begat Phares and Zara of Thamar; and Phares begat Esrom; and Esrom begat Aram; 4 And Aram begat Aminadab; and Aminadab begat Naasson; and Naasson begat Salmon; 5 And Salmon begat Booz of Rachab; and Booz begat Obed of Ruth; and Obed begat Jesse; 6 And Jesse begat David the king; and David the king begat Solomon of her that had been the wife of Urias; 7 And Solomon begat Roboam; and Roboam begat Abia; and Abia begat Asa; 8 And Asa begat Josaphat; and Josaphat begat Joram; and Joram begat Ozias; 9 And Ozias begat Joatham; and Joatham begat Achaz; and Achaz begat Ezekias; 10 And Ezekias begat Manasses; and Manasses begat Amon; and Amon begat Josias; 11 And Josias begat Jechonias and his brethren, about the time they were carried away to Babylon: 12 And after they were brought to Babylon, Jechonias begat Salathiel; and Salathiel begat Zorobabel; 13 And Zorobabel begat Abiud; and Abiud begat Eliakim; and Eliakim begat Azor; 14 And Azor begat Sadoc; and Sadoc begat Achim; and Achim begat Eliud; 15 And Eliud begat Eleazar; and Eleazar begat Matthan; and Matthan begat Jacob; 16 And Jacob begat Joseph the husband of Mary, of whom was born Jesus, who is called Christ. 17 So all the generations from Abraham to David are fourteen generations; and from David until the carrying away into Babylon are fourteen generations; and from the carrying away into Babylon unto Christ are fourteen generations. 18 Now the birth of Jesus Christ was on this wise: When as his mother Mary was espoused to Joseph, before they came together, she was found with child of the Holy Ghost. 19 Then Joseph her husband, being a just man, and not willing to make her a publick example, was minded to put her away privily. 20 But while he thought on these things, behold, the angel of the LORD appeared unto him in a dream, saying, Joseph, thou son of David, fear not to take unto thee Mary thy wife: for that which is conceived in her is of the Holy Ghost. 21 And she shall bring forth a son, and thou shalt call his name JESUS: for he shall save his people from their sins. 22 Now all this was done, that it might be fulfilled which was spoken of the Lord by the prophet, saying, 23 Behold, a virgin shall be with child, and shall bring forth a son, and they shall call his name Emmanuel, which being interpreted is, God with us. 24 Then Joseph being raised from sleep did as the angel of the Lord had bidden him, and took unto him his wife: 25 And knew her not till she had brought forth her firstborn son: and he called his name JESUS."
 
 type sessionState int
 
 const (
-	bookColumn sessionState = iota
+	translationColumn sessionState = iota
+	bookColumn
 	chapterColumn
 	passageColumn
 )
 
 /* MAIN MODEL */
 type Model struct {
-	loaded   bool
-	focused  sessionState
-	books    list.Model
-	chapter  list.Model
-	viewport viewport.Model
-	content  string
-	err      error
-	quitting bool
+	loaded       bool
+	focused      sessionState
+	translations list.Model
+	books        list.Model
+	chapters     list.Model
+	passage      viewport.Model
+	content      string
+	err          error
+	quitting     bool
 }
 
 func New() *Model {
@@ -78,12 +80,25 @@ func (m *Model) initLists(width, height int) {
 	if err != nil {
 		fmt.Println(err)
 	}
+	// Query the DB to get the translations
+	translations, err := GetTranslations()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	translationsList := list.New(translations, list.NewDefaultDelegate(), width, height)
 	bookList := list.New(books, list.NewDefaultDelegate(), width, height)
-	// chapterList := list.New([]list.Item{}, list.NewDefaultDelegate(), width, height)
 	chapterList := list.New([]list.Item{}, chapterDelegate{}, width, height)
 	passageView := viewport.New(width, height)
+
+	m.translations = list.Model(translationsList)
 	m.books = list.Model(bookList)
-	m.chapter = list.Model(chapterList)
+	m.chapters = list.Model(chapterList)
+
+	// Init Translation
+	m.translations.Title = "Translations"
+	m.translations.FilterInput.Prompt = "Find Translation: "
+	m.translations.SetStatusBarItemName("Translation", "Translations")
 
 	// Init Books
 	m.books.Title = "Books"
@@ -91,10 +106,11 @@ func (m *Model) initLists(width, height int) {
 	m.books.SetStatusBarItemName("Book", "Books")
 
 	// Init Chapters
-	m.chapter.Title = "Chapters"
-	m.chapter.FilterInput.Prompt = "Find Chapter: "
-	m.chapter.SetStatusBarItemName("Chapter", "Chapters")
-	m.chapter.SetItems([]list.Item{
+	m.chapters.Title = "Chapters"
+	m.chapters.FilterInput.Prompt = "Find Chapter: "
+	m.chapters.SetShowHelp(false)
+	m.chapters.SetStatusBarItemName("Chapter", "Chapters")
+	m.chapters.SetItems([]list.Item{
 		Chapter("1"),
 		Chapter("2"),
 		Chapter("3"),
@@ -108,9 +124,9 @@ func (m *Model) initLists(width, height int) {
 	})
 
 	// Init Passage
-	m.viewport = passageView
+	m.passage = passageView
 	passage := wrap.String(p, width-10)
-	m.viewport.SetContent(passage)
+	m.passage.SetContent(passage)
 }
 
 func (m Model) Init() tea.Cmd {
@@ -142,7 +158,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case bookColumn:
 			m.books, cmd = m.books.Update(msg)
 		case chapterColumn:
-			m.chapter, cmd = m.chapter.Update(msg)
+			m.chapters, cmd = m.chapters.Update(msg)
+		case passageColumn:
+			m.passage, cmd = m.passage.Update(msg)
+		case translationColumn:
+			m.translations, cmd = m.translations.Update(msg)
 		}
 	}
 	return m, cmd
@@ -153,27 +173,42 @@ func (m Model) View() string {
 		return "Jesus Loves You!"
 	}
 	if m.loaded {
+		translationView := m.translations.View()
+		bookView := m.books.View()
+		chapterView := m.chapters.View()
+		passageView := m.passage.View()
 		switch m.focused {
-		case passageColumn:
+		case translationColumn:
 			return lipgloss.JoinHorizontal(
 				lipgloss.Left,
-				m.books.View(),
-				m.chapter.View(),
-				m.viewport.View(),
+				translationView,
+				bookView,
+				chapterView,
+				passageView,
 			)
 		case chapterColumn:
 			return lipgloss.JoinHorizontal(
 				lipgloss.Left,
-				m.books.View(),
-				m.chapter.View(),
-				m.viewport.View(),
+				translationView,
+				bookView,
+				chapterView,
+				passageView,
+			)
+		case passageColumn:
+			return lipgloss.JoinHorizontal(
+				lipgloss.Left,
+				translationView,
+				bookView,
+				chapterView,
+				passageView,
 			)
 		default: //BookColumn is the default
 			return lipgloss.JoinHorizontal(
 				lipgloss.Left,
-				m.books.View(),
-				m.chapter.View(),
-				m.viewport.View(),
+				translationView,
+				bookView,
+				chapterView,
+				passageView,
 			)
 		}
 	} else {
