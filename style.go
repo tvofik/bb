@@ -2,10 +2,14 @@ package main
 
 import "github.com/charmbracelet/lipgloss"
 
-type FoldersBaseStyle struct {
-	Base       lipgloss.Style
-	Title      lipgloss.Style
-	TitleBar   lipgloss.Style
-	Selected   lipgloss.Style
-	Unselected lipgloss.Style
-}
+/* STYLING */
+var (
+	columnStyle = lipgloss.NewStyle().
+			Padding(1, 2)
+	focusedStyle = lipgloss.NewStyle().
+			Padding(1, 2).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("62"))
+	helpStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("241"))
+)
