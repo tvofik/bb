@@ -18,6 +18,7 @@ func openDB() (*sql.DB, error) {
 	return db, nil
 }
 
+/* Get Books */
 func GetBooks() ([]list.Item, error) {
 	var books []list.Item
 	db, err := openDB()
@@ -39,4 +40,28 @@ func GetBooks() ([]list.Item, error) {
 		books = append(books, book)
 	}
 	return books, err
+}
+
+/* Get Translation */
+func GetTranslations() ([]list.Item, error) {
+	var translations []list.Item
+	db, err := openDB()
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer db.Close()
+
+	rows, err := db.Query("SELECT abbreviation, version FROM bible_version_key")
+	if err != nil {
+		return translations, err
+	}
+	for rows.Next() {
+		var translation Translation
+		err := rows.Scan(&translation.abbreviation, &translation.name)
+		if err != nil {
+			return translations, err
+		}
+		translations = append(translations, translation)
+	}
+	return translations, err
 }
