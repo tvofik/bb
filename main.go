@@ -38,7 +38,7 @@ type Model struct {
 }
 
 func New() *Model {
-	return &Model{}
+	return &Model{focused: bookColumn}
 }
 
 // func (m *Model) updateChapters() tea.Cmd {
@@ -147,6 +147,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Next()
 		case "left":
 			m.Prev()
+		case "t":
+			// to change to translation
+			if m.focused == translationColumn {
+				m.focused = bookColumn
+			} else {
+				m.focused = translationColumn
+			}
 		case "esc", "ctrl+c":
 			m.quitting = true
 			return m, tea.Quit
@@ -189,7 +196,7 @@ func (m Model) View() string {
 		case chapterColumn:
 			return lipgloss.JoinHorizontal(
 				lipgloss.Left,
-				translationView,
+				// translationView,
 				bookView,
 				chapterView,
 				passageView,
@@ -197,7 +204,7 @@ func (m Model) View() string {
 		case passageColumn:
 			return lipgloss.JoinHorizontal(
 				lipgloss.Left,
-				translationView,
+				// translationView,
 				bookView,
 				chapterView,
 				passageView,
@@ -205,7 +212,7 @@ func (m Model) View() string {
 		default: //BookColumn is the default
 			return lipgloss.JoinHorizontal(
 				lipgloss.Left,
-				translationView,
+				// translationView,
 				bookView,
 				chapterView,
 				passageView,
