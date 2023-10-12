@@ -26,13 +26,13 @@ func GetBooks() ([]list.Item, error) {
 	}
 	defer db.Close()
 
-	rows, err := db.Query("SELECT title_short, title_full, chapters  FROM book_info")
+	rows, err := db.Query("SELECT book_id, title_short, title_full, chapters  FROM book_info")
 	if err != nil {
 		return books, err
 	}
 	for rows.Next() {
 		var book Book
-		err := rows.Scan(&book.title, &book.fullTitle, &book.chapters)
+		err := rows.Scan(&book.id, &book.title, &book.fullTitle, &book.chapters)
 		if err != nil {
 			return books, err
 		}
