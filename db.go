@@ -42,7 +42,7 @@ func GetBooks() ([]list.Item, error) {
 	return books, err
 }
 
-/* Get Translation */
+/* Get all the Translations available */
 func GetTranslations() ([]list.Item, error) {
 	var translations []list.Item
 	db, err := openDB()
@@ -64,4 +64,53 @@ func GetTranslations() ([]list.Item, error) {
 		translations = append(translations, translation)
 	}
 	return translations, err
+}
+
+// Get the passage
+// TODO Not sure which would work best
+func (m Model) GetChapter(bookId, chapter, translation string) ([]Verse, error) {
+	db, err := openDB()
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	query := `SELECT v, t FROM %s WHERE b = ? AND c = ?`
+	query = fmt.Sprintf(query, translation)
+
+	rows, err := db.Query(query, bookId, chapter)
+	if err != nil {
+		return nil, err
+	}
+
+	var currentVerse Verse
+	var fullChapter []Verse
+
+	for rows.Next() {
+		err := rows.Scan(&currentVerse.verse, &currentVerse.text)
+		if err != nil {
+			return nil, err
+
+		}
+		fullChapter = append(fullChapter, currentVerse)
+	}
+	return fullChapter, nil
+}
+
+/* Helps gets the exact table for the translation selected */
+func (m Model) GetCurrentTranslationTable(translation string) (string, error) {
+	db, err := openDB()
+	if err != nil {
+		return "", err
+	}
+	defer db.Close()
+
+	// Get the table name of the Translation selected
+	var tableName string
+	row := db.QueryRow("SELECT table_name FROM bible_version_key WHERE abbreviation = ?", translation)
+	err = row.Scan(&tableName)
+	if err != nil {
+		return "", err
+	}
+	return tableName, nil
 }

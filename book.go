@@ -4,7 +4,7 @@ type Book struct {
 	id        string
 	title     string
 	fullTitle string
-	chapters  string
+	chapters  int
 }
 
 // implement the List.Item interface
