@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -49,15 +48,6 @@ func New() *Model {
 	return &Model{focused: bookColumn, loaded: false}
 }
 
-//	func (m *Model) updateChapters() tea.Cmd {
-//		return func() tea.Msg {
-//			selectedItem := m.lists[m.focused].SelectedItem()
-//			selectedBook := selectedItem.(Book)
-//			fmt.Println(selectedBook.chapters)
-//			return selectedBook.chapters
-//		}
-//	}
-
 type Passage struct {
 	book    string  // Name of the book
 	chapter string  // Chapter Number
@@ -90,53 +80,18 @@ func (m *Model) GetPassage(bookId, chapter, translation string) tea.Cmd {
 	}
 }
 
-// //TODO
-/* Gets the list of chapters in a book */
-// func (m Model) GetBookChapters() (chapterList []list.Item) {
-// 	selectedItem := m.books.SelectedItem()
-// 	selectedBook := selectedItem.(Book)
-// 	chapters := selectedBook.chapters
-// 	var num string
-// 	for i := 0; i < chapters; i++ {
-// 		num = fmt.Sprintf("%v", i+1)
-// 		chapterList = append(chapterList, Chapter(num))
-// 	}
-// 	fmt.Println(chapterList)
-// 	return chapterList
-// }
-
-/* Gets the list of chapters in a book */
-// func (m Model) BookChapters() tea.Cmd {
-// 	return func() tea.Msg {
-// 		msg := m.GetBookChapters()
-// 		return GetBookChaptersMsg{chapterList: msg}
-// 	}
-// }
-
 /* Gets the list of chapters in a book */
 func (m Model) GetBookChapters() tea.Msg {
-	var (
-		num         string
-		chapterList []list.Item
-	)
+	var chapterList []list.Item
+
 	selectedItem := m.books.SelectedItem()
 	selectedBook := selectedItem.(Book)
 	chapters := selectedBook.chapters
 	for i := 0; i < chapters; i++ {
-		num = fmt.Sprintf("%v", i+1)
+		num := fmt.Sprintf("%v", i+1)
 		chapterList = append(chapterList, Chapter(num))
 	}
-	fmt.Println(chapterList)
 	return GetBookChaptersMsg{chapterList: chapterList}
-}
-
-//TODO
-/* Gets the list of chapters in a book */
-func (m Model) BookChapters() tea.Cmd {
-	return func() tea.Msg {
-		msg := m.GetBookChapters()
-		return msg
-	}
 }
 
 /* Move to the next column */
@@ -198,22 +153,6 @@ func (m *Model) initModel(width, height int) {
 	bookList := list.New(books, list.NewDefaultDelegate(), width, height)
 	chapterList := list.New([]list.Item{}, chapterDelegate{}, width, height)
 
-	passageView := viewport.New(50, 20)
-	passageView.Style = lipgloss.NewStyle().
-		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("62")).
-		PaddingRight(2)
-
-	renderer, err := glamour.NewTermRenderer(
-		glamour.WithAutoStyle(),
-		glamour.WithWordWrap(width),
-	)
-
-	str, err := renderer.Render(p)
-	if err != nil {
-		fmt.Println(err)
-	}
-
 	m.translations = list.Model(translationsList)
 	m.books = list.Model(bookList)
 	m.chapters = list.Model(chapterList)
@@ -236,19 +175,7 @@ func (m *Model) initModel(width, height int) {
 	// m.chapters.SetItems([]list.Item{
 	// 	Chapter("1"),
 	// 	Chapter("2"),
-	// 	Chapter("3"),
-	// 	Chapter("4"),
-	// 	Chapter("5"),
-	// 	Chapter("6"),
-	// 	Chapter("7"),
-	// 	Chapter("8"),
-	// 	Chapter("9"),
-	// 	Chapter("10"),
 	// })
-
-	// Init Passage
-	m.passage = passageView
-	m.passage.SetContent(str)
 }
 
 func (m Model) Init() tea.Cmd {
@@ -262,69 +189,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.loaded {
 			m.initModel(msg.Width, msg.Height)
 			m.loaded = true
+			return m, m.GetBookChapters
 		}
 
 	case GetBookChaptersMsg:
-		fmt.Println(msg.chapterList)
-		// m.chapters.SetItems(msg.chapterList)
+		m.chapters.SetItems(msg.chapterList)
 
 	case tea.KeyMsg:
 		if m.focused == bookColumn {
 			m.books, cmd = m.books.Update(msg)
 			switch msg.String() {
-			case "enter":
+			case "down", "up":
 				// return m, tea.Quit
-				m.BookChapters()
+				// m.books, cmd = m.books.Update(msg)
+				return m, m.GetBookChapters
 			}
 		} else if m.focused == chapterColumn {
 			m.chapters, cmd = m.chapters.Update(msg)
 		} else if m.focused == passageColumn {
 			m.passage, cmd = m.passage.Update(msg)
 		}
-
-		// case tea.KeyMsg:
-		// 	switch msg.String() {
-		// 	case "right":
-		// 		m.Next()
-		// 	case "left":
-		// 		m.Prev()
-		// 	case "t":
-		// 		// to change to translation
-		// 		if m.focused == translationColumn {
-		// 			m.focused = bookColumn
-		// 		} else {
-		// 			m.focused = translationColumn
-		// 		}
-		// 	case "esc", "q", "ctrl+c":
-		// 		m.quitting = true
-		// 		return m, tea.Quit
-		// 		// case "enter":
-		// 		// return m, nil
-		// 		// return m, m.updateChapters
-		// 	}
-
-		// 	switch m.focused {
-		// 	case bookColumn:
-		// 		m.books, cmd = m.books.Update(msg)
-		// 		switch msg.String() {
-		// 		case "enter":
-		// 			m.BookChapters()
-		// 		}
-		// 	case chapterColumn:
-		// 		m.chapters, cmd = m.chapters.Update(msg)
-		// 		switch msg.String() {
-		// 		case "enter":
-		// 			m.GetBookChapters()
-		// 			// bookId := m.GetSelectedBookId()
-		// 			// chapterId := m.GetSelectedChapterId()
-		// 			// translation := m.GetSelectedTranslation()
-		// 			// m.GetChapter(bookId, chapterId, translation)
-		// 		}
-		// 	case passageColumn:
-		// 		m.passage, cmd = m.passage.Update(msg)
-		// 	case translationColumn:
-		// 		m.translations, cmd = m.translations.Update(msg)
-		// 	}
 	}
 	return m, cmd
 }
@@ -333,45 +217,15 @@ func (m Model) View() string {
 	if m.quitting {
 		return "Jesus ❤️  You!" // TODO: Not working
 	}
+
 	if m.loaded {
-		translationView := m.translations.View()
 		bookView := m.books.View()
 		chapterView := m.chapters.View()
-		passageView := m.passage.View()
-		switch m.focused {
-		case translationColumn:
-			return lipgloss.JoinHorizontal(
-				lipgloss.Left,
-				translationView,
-				bookView,
-				chapterView,
-				passageView,
-			)
-		case chapterColumn:
-			return lipgloss.JoinHorizontal(
-				lipgloss.Left,
-				// translationView,
-				bookView,
-				chapterView,
-				passageView,
-			)
-		case passageColumn:
-			return lipgloss.JoinHorizontal(
-				lipgloss.Left,
-				// translationView,
-				bookView,
-				chapterView,
-				passageView,
-			)
-		default: //BookColumn is the default
-			return lipgloss.JoinHorizontal(
-				lipgloss.Left,
-				// translationView,
-				bookView,
-				chapterView,
-				passageView,
-			)
-		}
+		return lipgloss.JoinHorizontal(
+			lipgloss.Left,
+			bookView,
+			chapterView,
+		)
 	} else {
 		return "Loading..."
 	}
