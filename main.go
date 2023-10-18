@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -29,10 +30,11 @@ const (
 type Model struct {
 	loaded bool
 
-	// spinner      spinner.Model //TODO: Add spinner while we fetch the data
+	// spinner spinner.Model //TODO
 
 	// The column focused
 	focused sessionState
+
 	// The List for translation, book & chapters Translations to display
 	columns []list.Model
 	// The viewport for the book and chapter
@@ -44,7 +46,8 @@ type Model struct {
 
 func New() *Model {
 	// return &Model{focused: bookColumn}
-	return &Model{focused: bookColumn, loaded: false}
+	// return &Model{focused: bookColumn, loaded: false}
+	return &Model{focused: passageColumn, loaded: false}
 }
 
 type Passage struct {
@@ -151,25 +154,25 @@ func (m *Model) initModel(width, height int) {
 
 	m.columns = []list.Model{translationsList, bookList, chapterList}
 
-	// passageView := viewport.New(50, 20)
-	// passageView.Style = lipgloss.NewStyle().
-	// 	BorderStyle(lipgloss.RoundedBorder()).
-	// 	BorderForeground(lipgloss.Color("62")).
-	// 	PaddingRight(2)
+	passageView := viewport.New(50, 20)
+	passageView.Style = lipgloss.NewStyle().
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("62")).
+		PaddingRight(2)
 
-	// renderer, err := glamour.NewTermRenderer(
-	// 	glamour.WithAutoStyle(),
-	// 	glamour.WithWordWrap(width),
-	// )
+	renderer, err := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(width),
+	)
 
-	// str, err := renderer.Render(p)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
+	str, err := renderer.Render(p)
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	// Init Passage
-	// m.passage = passageView
-	// m.passage.SetContent(str)
+	m.passage = passageView
+	m.passage.SetContent(str)
 
 	// Init Translation
 	m.columns[translationColumn].Title = "Translations"
@@ -203,6 +206,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.GetBookChapters
 		}
 
+	// case GetPassageMsg:
+	// 	renderer, err := glamour.NewTermRenderer(
+	// 		glamour.WithAutoStyle(),
+	// 		glamour.WithWordWrap(100),
+	// 	)
+
+	// 	str, err := renderer.Render(p)
+	// 	if err != nil {
+	// 		fmt.Println(err)
+	// 	}
+	// 	m.passage.SetContent(str)
+
 	case GetBookChaptersMsg:
 		m.columns[chapterColumn].SetItems(msg.chapterList)
 
@@ -230,9 +245,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc", "q", "ctrl+c":
 			m.quitting = true
 			return m, tea.Quit
+		case "enter":
+			if m.focused == chapterColumn {
+				var cmd tea.Cmd
+				bookId := m.GetSelectedBookId()
+				chapter := m.GetSelectedChapterId()
+				translation := m.GetSelectedTranslation()
+				cmd = m.GetPassage(bookId, chapter, translation)
+				return m, cmd
+			}
 		}
 	}
-
 	var cmd tea.Cmd
 	m.columns[m.focused], cmd = m.columns[m.focused].Update(msg)
 	return m, cmd
@@ -246,7 +269,7 @@ func (m Model) View() string {
 		translationView := m.columns[translationColumn].View()
 		bookView := m.columns[bookColumn].View()
 		chapterView := m.columns[chapterColumn].View()
-		// passageView := m.passage.View()
+		passageView := m.passage.View()
 		switch m.focused {
 		case translationColumn:
 			return lipgloss.JoinHorizontal(
@@ -261,6 +284,7 @@ func (m Model) View() string {
 				// translationView,
 				bookView,
 				chapterView,
+				passageView,
 			)
 		case passageColumn:
 			return lipgloss.JoinHorizontal(
@@ -268,6 +292,7 @@ func (m Model) View() string {
 				// translationView,
 				bookView,
 				chapterView,
+				passageView,
 			)
 		default: //BookColumn is the default
 			return lipgloss.JoinHorizontal(
@@ -275,6 +300,7 @@ func (m Model) View() string {
 				// translationView,
 				bookView,
 				chapterView,
+				passageView,
 			)
 		}
 	} else {
