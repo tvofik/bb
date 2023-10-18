@@ -96,8 +96,6 @@ func (m Model) GetBookChapters() tea.Msg {
 func (m *Model) Next() {
 	if m.focused == bookColumn {
 		m.focused = chapterColumn
-	} else {
-		m.focused = bookColumn
 	}
 }
 
@@ -177,6 +175,7 @@ func (m *Model) initModel(width, height int) {
 	m.columns[translationColumn].Title = "Translations"
 	m.columns[translationColumn].FilterInput.Prompt = "Find Translation: "
 	m.columns[translationColumn].SetStatusBarItemName("Translation", "Translations")
+	m.columns[translationColumn].SetShowHelp(false)
 
 	// Init Books
 	m.columns[bookColumn].Title = "Books"
@@ -187,6 +186,7 @@ func (m *Model) initModel(width, height int) {
 	m.columns[chapterColumn].Title = "Chapters"
 	m.columns[chapterColumn].FilterInput.Prompt = "Find Chapter: "
 	m.columns[chapterColumn].SetStatusBarItemName("Chapter", "Chapters")
+	m.columns[chapterColumn].SetShowHelp(false)
 }
 
 func (m Model) Init() tea.Cmd {
