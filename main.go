@@ -46,8 +46,7 @@ type Model struct {
 
 func New() *Model {
 	// return &Model{focused: bookColumn}
-	// return &Model{focused: bookColumn, loaded: false}
-	return &Model{focused: passageColumn, loaded: false}
+	return &Model{focused: bookColumn, loaded: false}
 }
 
 type Passage struct {
