@@ -25,12 +25,8 @@ type Model struct {
 	loaded bool
 	// spinner      spinner.Model //TODO: Add spinner while we fetch the data
 	focused sessionState
-	// The List of Translations to display
-	translations list.Model
-	// The List of bible books to display
-	books list.Model
-	// The List of chapters for the selected displayed
-	chapters list.Model
+	// The List for translation, book & chapters Translations to display
+	columns []list.Model
 	// The viewport for the book and chapter
 	passage  viewport.Model
 	content  string
@@ -78,7 +74,7 @@ func (m *Model) GetPassage(bookId, chapter, translation string) tea.Cmd {
 /* Gets the list of chapters in a book */
 func (m Model) GetBookChapters() tea.Msg {
 	var chapterList []list.Item
-	selectedItem := m.books.SelectedItem()
+	selectedItem := m.columns[bookColumn].SelectedItem()
 	selectedBook := selectedItem.(Book)
 	chapters := selectedBook.chapters
 	for i := 0; i < chapters; i++ {
@@ -106,21 +102,21 @@ func (m *Model) Prev() {
 
 /* Get the selected book from field */
 func (m Model) GetSelectedBookId() string {
-	selectedItem := m.books.SelectedItem()
+	selectedItem := m.columns[bookColumn].SelectedItem()
 	selectedBook := selectedItem.(Book)
 	return selectedBook.id
 }
 
 /* Get the selected chapter item from field */
 func (m Model) GetSelectedChapterId() string {
-	selectedItem := m.chapters.SelectedItem()
+	selectedItem := m.columns[chapterColumn].SelectedItem()
 	selectedChapter := selectedItem.(Chapter)
 	return selectedChapter.FilterValue() //returning the filtervalue which is the id
 }
 
 /* Get the selected translation & gets the table name */
 func (m Model) GetSelectedTranslation() string {
-	selectedItem := m.translations.SelectedItem()
+	selectedItem := m.columns[translationColumn].SelectedItem()
 	selectedTranslation := selectedItem.(Translation)
 
 	translation := selectedTranslation.abbreviation
@@ -147,25 +143,22 @@ func (m *Model) initModel(width, height int) {
 	bookList := list.New(books, list.NewDefaultDelegate(), width, height)
 	chapterList := list.New([]list.Item{}, chapterDelegate{}, width, height)
 
-	m.translations = list.Model(translationsList)
-	m.books = list.Model(bookList)
-	m.chapters = list.Model(chapterList)
+	m.columns = []list.Model{translationsList, bookList, chapterList}
 
 	// Init Translation
-	m.translations.Title = "Translations"
-	m.translations.FilterInput.Prompt = "Find Translation: "
-	m.translations.SetStatusBarItemName("Translation", "Translations")
+	m.columns[translationColumn].Title = "Translations"
+	m.columns[translationColumn].FilterInput.Prompt = "Find Translation: "
+	m.columns[translationColumn].SetStatusBarItemName("Translation", "Translations")
 
 	// Init Books
-	m.books.Title = "Books"
-	m.books.FilterInput.Prompt = "Find Book: "
-	m.books.SetStatusBarItemName("Book", "Books")
+	m.columns[bookColumn].Title = "Books"
+	m.columns[bookColumn].FilterInput.Prompt = "Find Book: "
+	m.columns[bookColumn].SetStatusBarItemName("Book", "Books")
 
 	// Init Chapters
-	m.chapters.Title = "Chapters"
-	m.chapters.FilterInput.Prompt = "Find Chapter: "
-	m.chapters.SetShowHelp(false)
-	m.chapters.SetStatusBarItemName("Chapter", "Chapters")
+	m.columns[chapterColumn].Title = "Chapters"
+	m.columns[chapterColumn].FilterInput.Prompt = "Find Chapter: "
+	m.columns[chapterColumn].SetStatusBarItemName("Chapter", "Chapters")
 }
 
 func (m Model) Init() tea.Cmd {
@@ -173,7 +166,8 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+	// var cmd tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		if !m.loaded {
@@ -183,25 +177,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case GetBookChaptersMsg:
-		m.chapters.SetItems(msg.chapterList)
+		m.columns[chapterColumn].SetItems(msg.chapterList)
 
 	case tea.KeyMsg:
-		if m.focused == bookColumn {
-			m.books, cmd = m.books.Update(msg)
-			switch msg.String() {
-			case "down", "up":
-				return m, m.GetBookChapters
-			case "right":
-				m.Next()
-			case "left":
-				m.Prev()
+		switch msg.String() {
+		case "down", "up":
+			if m.focused == bookColumn {
+				var cmd tea.Cmd
+				var cmds []tea.Cmd
+				m.columns[bookColumn], cmd = m.columns[bookColumn].Update(msg)
+				cmds = append(cmds, m.GetBookChapters, cmd)
+				return m, tea.Batch(cmds...)
 			}
-		} else if m.focused == chapterColumn {
-			m.chapters, cmd = m.chapters.Update(msg)
-		} else if m.focused == passageColumn {
-			m.passage, cmd = m.passage.Update(msg)
+		case "right":
+			m.Next()
+		case "left":
+			m.Prev()
 		}
 	}
+
+	var cmd tea.Cmd
+	m.columns[m.focused], cmd = m.columns[m.focused].Update(msg)
 	return m, cmd
 }
 
@@ -211,13 +207,32 @@ func (m Model) View() string {
 	}
 
 	if m.loaded {
-		bookView := m.books.View()
-		chapterView := m.chapters.View()
-		return lipgloss.JoinHorizontal(
-			lipgloss.Left,
-			bookView,
-			chapterView,
-		)
+		translationView := m.columns[translationColumn].View()
+		bookView := m.columns[bookColumn].View()
+		chapterView := m.columns[chapterColumn].View()
+		switch m.focused {
+		case translationColumn:
+			return lipgloss.JoinHorizontal(
+				lipgloss.Left,
+				focusedStyle.Render(translationView),
+				columnStyle.Render(bookView),
+				columnStyle.Render(chapterView),
+			)
+		case chapterColumn:
+			return lipgloss.JoinHorizontal(
+				lipgloss.Left,
+				columnStyle.Render(translationView),
+				columnStyle.Render(bookView),
+				focusedStyle.Render(chapterView),
+			)
+		default:
+			return lipgloss.JoinHorizontal(
+				lipgloss.Left,
+				columnStyle.Render(translationView),
+				focusedStyle.Render(bookView),
+				columnStyle.Render(chapterView),
+			)
+		}
 	} else {
 		return "Loading..."
 	}
