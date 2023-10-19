@@ -56,13 +56,13 @@ type Passage struct {
 }
 
 type Verse struct {
-	verse string // Verse Number
-	text  string // Text of the verse
+	number string // Verse Number
+	text   string // Text of the verse
 }
 
 type GetPassageMsg struct {
 	Err     error
-	Passage []Verse
+	Passage string
 }
 
 /* Used to get the list of number of chapters in a book */
@@ -77,7 +77,15 @@ func (m *Model) GetPassage(bookId, chapter, translation string) tea.Cmd {
 		if err != nil {
 			return GetPassageMsg{Err: err}
 		}
-		return GetPassageMsg{Passage: msg}
+		var formattedPassage string
+		if len(msg) != 0 {
+			formattedPassage := "Bible Verse: "
+			for _, verse := range msg {
+				formattedPassage += fmt.Sprintf("[%v] %v ", verse.number, verse.text)
+			}
+			fmt.Println(formattedPassage)
+		}
+		return GetPassageMsg{Passage: formattedPassage}
 	}
 }
 

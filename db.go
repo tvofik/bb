@@ -87,7 +87,7 @@ func (m Model) GetChapter(bookId, chapter, translation string) ([]Verse, error) 
 	var fullChapter []Verse
 
 	for rows.Next() {
-		err := rows.Scan(&currentVerse.verse, &currentVerse.text)
+		err := rows.Scan(&currentVerse.number, &currentVerse.text)
 		if err != nil {
 			return nil, err
 
