@@ -35,6 +35,7 @@ type Model struct {
 	content  string
 	err      error
 	quitting bool
+	zen      bool //Testing
 }
 
 func New() *Model {
@@ -255,6 +256,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Next()
 		case "left":
 			m.Prev()
+		case "f": // to focus on the passage only
+			if !m.zen {
+				m.zen = true
+				m.focused = passageColumn
+			} else {
+				m.zen = false
+			}
 		case "t":
 			// to change to translation
 			if m.focused == translationColumn {
@@ -286,9 +294,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	// if !m.quitting {
-	// 	return "Jesus ❤️  You!" // TODO: Not working
-	// }
+	if m.quitting {
+		return "Jesus ❤️  You!" // TODO: Not working
+	}
+	if m.zen {
+		passageView := m.passage.View()
+		return passageView
+	}
 	if m.loaded {
 		translationView := m.columns[translationColumn].View()
 		bookView := m.columns[bookColumn].View()
