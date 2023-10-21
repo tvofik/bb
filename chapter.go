@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -18,17 +16,17 @@ var (
 
 /* Implementing the Default */
 type Chapter struct {
-	number      int
+	number      string
 	description string
 }
 
 // implement the List.Item interface
 func (c Chapter) FilterValue() string {
-	return ""
+	return c.number
 }
 
 func (c Chapter) Title() string {
-	return fmt.Sprintf("%d", c.number)
+	return c.number
 }
 
 func (c Chapter) Description() string {

@@ -86,10 +86,12 @@ func (m Model) GetBookChapters() tea.Msg {
 	var chapterList []list.Item
 	selectedItem := m.columns[bookColumn].SelectedItem()
 	selectedBook := selectedItem.(Book)
+	selectedBookName := selectedBook.title
 	chapters := selectedBook.chapters
 	for i := 0; i < chapters; i++ {
 		num := fmt.Sprintf("%v", i+1)
-		chapterList = append(chapterList, Chapter(num))
+		descr := fmt.Sprintf("%v %v ", selectedBookName, i+1)
+		chapterList = append(chapterList, Chapter{number: num, description: descr})
 	}
 	return GetBookChaptersMsg{chapterList: chapterList}
 }
@@ -154,11 +156,12 @@ func (m *Model) initModel(width, height int) {
 
 	translationsList := list.New(translations, list.NewDefaultDelegate(), width, height)
 	bookList := list.New(books, list.NewDefaultDelegate(), width, height/2)
-	chapterList := list.New([]list.Item{}, chapterDelegate{}, width, height/2)
+	// chapterList := list.New([]list.Item{}, chapterDelegate{}, width, height/2)
+	chapterList := list.New([]list.Item{}, list.NewDefaultDelegate(), width, height/2)
 
 	m.columns = []list.Model{translationsList, bookList, chapterList}
 
-	passageView := viewport.New(50, 20)
+	passageView := viewport.New(200, height/2-3)
 	passageView.Style = lipgloss.NewStyle().
 		BorderStyle(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("62")).
@@ -188,6 +191,7 @@ func (m *Model) initModel(width, height int) {
 	m.columns[bookColumn].Title = "Books"
 	m.columns[bookColumn].FilterInput.Prompt = "Find Book: "
 	m.columns[bookColumn].SetStatusBarItemName("Book", "Books")
+	m.columns[bookColumn].SetShowHelp(false)
 
 	m.columns[bookColumn].Styles.Title.Faint(true) // use when not focused
 	m.columns[bookColumn].Styles.Title.Width(20)   //use for title
@@ -218,7 +222,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case GetPassageMsg:
 		renderer, err := glamour.NewTermRenderer(
 			glamour.WithAutoStyle(),
-			glamour.WithWordWrap(50),
+			glamour.WithWordWrap(100),
 		)
 
 		str, err := renderer.Render(msg.Passage)
